@@ -1,0 +1,5 @@
+lexik_jwt_authentication:
+    secret_key: '%kernel.project_dir%/config/jwt/private.pem'  # chemin vers ta clé privée
+    public_key: '%kernel.project_dir%/config/jwt/public.pem'   # chemin vers ta clé publique
+    pass_phrase: 'moro'  # si tu as mis un mot de passe à la clé, mets-le ici, sinon laisse vide
+    token_ttl: 3600

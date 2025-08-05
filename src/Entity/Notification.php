@@ -1,99 +1,122 @@
 <?php
 
 namespace App\Entity;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
+
+use App\Repository\NotificationRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-#[ORM\Entity]
+
+#[ORM\Entity(repositoryClass: NotificationRepository::class)]
 class Notification
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: "integer")]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: "notifications")]
-    private ?User $destinataire = null;
+    #[ORM\Column(length: 255)]
+    private ?string $titre = null;
 
-    #[ORM\Column(type: "string")]
-    private string $contenu;
+    #[ORM\Column(length: 1000)]
+    private ?string $contenu = null;
 
-    #[ORM\Column(type: "boolean")]
-    private bool $vue;
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    private ?\DateTimeInterface $dateCreation = null;
 
-    #[ORM\Column(type: "datetime")]
-    private \DateTimeInterface $dateCreation;
-    #[ORM\Column(type: "string", length: 255)]
-    private string $titre;
+    #[ORM\Column]
+    private ?bool $lu = null;
 
-    #[ORM\Column(type: "string", length: 20)]
-    private string $priorite = 'normale';
+    #[ORM\Column(length: 255)]
+    private ?string $priorite = null;
 
-    #[ORM\Column(type: "boolean")]
-    private bool $lu = false;
+    #[ORM\ManyToOne(inversedBy: 'notifications')]
+    private ?User $user = null;
+
+    public function __construct()
+    {
+        $this->dateCreation = new \DateTime();
+        $this->lu = false;
+    }
+
     public function getId(): ?int
     {
         return $this->id;
     }
-    public function getDestinataire(): ?User
-    {
-        return $this->destinataire;
-    }
-    public function setDestinataire(?User $destinataire): static
-    {
-        $this->destinataire = $destinataire;
 
-        return $this;
-    }
-    public function getContenu(): string
-    {
-        return $this->contenu;
-    }
-    public function setContenu(string $contenu): static
-    {
-        $this->contenu = $contenu;
-
-        return $this;
-    }
-    public function isVue(): bool
-    {
-        return $this->vue;
-    }
-    public function setVue(bool $vue): static
-    {
-        $this->vue = $vue;
-
-        return $this;
-    }
-    public function getDateCreation(): \DateTimeInterface
-    {
-        return $this->dateCreation;
-    }
-    public function setDateCreation(\DateTimeInterface $dateCreation): static
-    {
-        $this->dateCreation = $dateCreation;
-
-        return $this;
-    }
-    public function getTitre(): string
+    public function getTitre(): ?string
     {
         return $this->titre;
     }
+
     public function setTitre(string $titre): static
     {
         $this->titre = $titre;
-
         return $this;
     }
-    public function getPriorite(): string
+
+    public function getContenu(): ?string
+    {
+        return $this->contenu;
+    }
+
+    public function setContenu(string $contenu): static
+    {
+        $this->contenu = $contenu;
+        return $this;
+    }
+
+    public function getDateCreation(): ?\DateTimeInterface
+    {
+        return $this->dateCreation;
+    }
+
+    public function setDateCreation(\DateTimeInterface $dateCreation): static
+    {
+        $this->dateCreation = $dateCreation;
+        return $this;
+    }
+
+    public function isLu(): ?bool
+    {
+        return $this->lu;
+    }
+
+    public function setLu(bool $lu): static
+    {
+        $this->lu = $lu;
+        return $this;
+    }
+
+    public function getPriorite(): ?string
     {
         return $this->priorite;
     }
+
     public function setPriorite(string $priorite): static
     {
         $this->priorite = $priorite;
-
         return $this;
     }
 
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
+        return $this;
+    }
+
+    // Méthodes helper
+    public function envoyerNotification(): void
+    {
+        $this->dateCreation = new \DateTime();
+    }
+
+    public function marquerLu(): void
+    {
+        $this->lu = true;
+    }
 }

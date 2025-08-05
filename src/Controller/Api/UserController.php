@@ -37,6 +37,71 @@ class UserController extends AbstractController
         return $this->json($users, 200, [], ['groups' => ['user:read']]);
     }
 
+    #[Route('/admin/dashboard', methods: ['GET'])]
+    #[OA\Tag(name: 'admin')]
+    #[OA\Response(
+        response: 200,
+        description: 'Returns all users grouped by type with statistics',
+        content: new OA\JsonContent(
+            type: 'object',
+            properties: [
+                'students' => new OA\Property(property: 'students', type: 'array'),
+                'teachers' => new OA\Property(property: 'teachers', type: 'array'),
+                'parents' => new OA\Property(property: 'parents', type: 'array'),
+                'administrators' => new OA\Property(property: 'administrators', type: 'array'),
+                'statistics' => new OA\Property(property: 'statistics', type: 'object')
+            ]
+        )
+    )]
+    public function getAdminDashboard(): JsonResponse
+    {
+        // Get all users grouped by type
+        $students = $this->em->getRepository(Student::class)->findAll();
+        $teachers = $this->em->getRepository(Teacher::class)->findAll();
+        $parents = $this->em->getRepository(ParentUser::class)->findAll();
+        $administrators = $this->em->getRepository(Administrator::class)->findAll();
+        
+        // Calculate statistics
+        $statistics = [
+            'total_users' => count($students) + count($teachers) + count($parents) + count($administrators),
+            'total_students' => count($students),
+            'total_teachers' => count($teachers),
+            'total_parents' => count($parents),
+            'total_administrators' => count($administrators),
+            'students_by_class' => $this->getStudentsByClass($students),
+            'recently_registered' => $this->getRecentlyRegisteredUsers(),
+        ];
+
+        return $this->json([
+            'students' => $students,
+            'teachers' => $teachers,
+            'parents' => $parents,
+            'administrators' => $administrators,
+            'statistics' => $statistics
+        ], 200, [], ['groups' => ['user:read', 'student:read', 'teacher:read', 'parent:read', 'admin:read']]);
+    }
+
+    private function getStudentsByClass(array $students): array
+    {
+        $classCounts = [];
+        foreach ($students as $student) {
+            $className = $student->getClasse() ? $student->getClasse()->getNom() : 'Non assigné';
+            $classCounts[$className] = ($classCounts[$className] ?? 0) + 1;
+        }
+        return $classCounts;
+    }
+
+    private function getRecentlyRegisteredUsers(): array
+    {
+        $oneWeekAgo = new \DateTime('-1 week');
+        return $this->userRepository->createQueryBuilder('u')
+            ->where('u.id IS NOT NULL')
+            ->orderBy('u.id', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
+    }
+
     #[Route('/{id}', methods: ['GET'])]
     #[OA\Tag(name: 'user')]
     public function showUser(int $id): JsonResponse

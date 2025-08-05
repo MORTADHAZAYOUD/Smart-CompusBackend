@@ -1,0 +1,108 @@
+<div class="login-container">
+  <div class="login-card">
+    <mat-card class="login-form-card">
+      <mat-card-header>
+        <div mat-card-avatar class="login-header-image">
+          <mat-icon>school</mat-icon>
+        </div>
+        <mat-card-title>SmartCampus</mat-card-title>
+        <mat-card-subtitle>ERP Scolaire - Connexion</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+          
+          <!-- Email Field -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Email</mat-label>
+            <input 
+              matInput 
+              type="email" 
+              formControlName="email"
+              placeholder="votreemail@exemple.com"
+              autocomplete="email">
+            <mat-icon matSuffix>email</mat-icon>
+            <mat-error *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+              {{ getEmailErrorMessage() }}
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Password Field -->
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Mot de passe</mat-label>
+            <input 
+              matInput 
+              [type]="hidePassword ? 'password' : 'text'"
+              formControlName="password"
+              placeholder="Votre mot de passe"
+              autocomplete="current-password">
+            <button 
+              mat-icon-button 
+              matSuffix 
+              type="button"
+              (click)="hidePassword = !hidePassword"
+              [attr.aria-label]="'Hide password'"
+              [attr.aria-pressed]="hidePassword">
+              <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+            </button>
+            <mat-error *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+              {{ getPasswordErrorMessage() }}
+            </mat-error>
+          </mat-form-field>
+
+          <!-- Submit Button -->
+          <button 
+            mat-raised-button 
+            color="primary" 
+            type="submit"
+            class="full-width login-button"
+            [disabled]="isLoading">
+            <span *ngIf="!isLoading">Se connecter</span>
+            <span *ngIf="isLoading">
+              <mat-spinner diameter="20" color="accent"></mat-spinner>
+              Connexion...
+            </span>
+          </button>
+        </form>
+      </mat-card-content>
+
+      <mat-card-actions align="center">
+        <p class="login-footer">
+          Mot de passe oublié ? 
+          <a href="#" class="forgot-password-link">Cliquez ici</a>
+        </p>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Information Card -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>Bienvenue sur SmartCampus</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-content">
+          <div class="feature-item">
+            <mat-icon color="primary">people</mat-icon>
+            <span>Gestion des utilisateurs</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon color="primary">event</mat-icon>
+            <span>Planning et séances</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon color="primary">grade</mat-icon>
+            <span>Suivi des notes</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon color="primary">message</mat-icon>
+            <span>Messagerie intégrée</span>
+          </div>
+          <div class="feature-item">
+            <mat-icon color="primary">notifications</mat-icon>
+            <span>Notifications en temps réel</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

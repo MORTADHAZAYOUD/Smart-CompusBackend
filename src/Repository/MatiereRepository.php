@@ -8,11 +8,6 @@ use Doctrine\Persistence\ManagerRegistry;
 
 /**
  * @extends ServiceEntityRepository<Matiere>
- *
- * @method Matiere|null find($id, $lockMode = null, $lockVersion = null)
- * @method Matiere|null findOneBy(array $criteria, array $orderBy = null)
- * @method Matiere[]    findAll()
- * @method Matiere[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
  */
 class MatiereRepository extends ServiceEntityRepository
 {
@@ -21,17 +16,44 @@ class MatiereRepository extends ServiceEntityRepository
         parent::__construct($registry, Matiere::class);
     }
 
-    // Exemple de méthode personnalisée
-    public function findByNom(string $nom): array
+    public function save(Matiere $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(Matiere $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    /**
+     * Trouver toutes les matières ordonnées par nom
+     */
+    public function findAllOrdered(): array
     {
         return $this->createQueryBuilder('m')
-            ->andWhere('m.nom LIKE :nom')
-            ->setParameter('nom', '%' . $nom . '%')
+            ->orderBy('m.nom', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
-    // (Optionnel) Ajouter plus tard si tu relis Matière à Séance ou Note
-    // public function findSeancesByMatiere(Matiere $matiere) {...}
-    // public function findNotesByMatiere(Matiere $matiere) {...}
+    /**
+     * Trouver par code de matière
+     */
+    public function findByCode(string $code): ?Matiere
+    {
+        return $this->createQueryBuilder('m')
+            ->andWhere('m.code = :code')
+            ->setParameter('code', $code)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

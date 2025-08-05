@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\ConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ConversationRepository::class)]
@@ -12,25 +13,36 @@ class Conversation
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
+    #[ORM\Column(length: 255)]
     private ?string $titre = null;
 
-    #[ORM\Column(type: 'datetime')]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
     private ?\DateTimeInterface $dateCreation = null;
 
-    #[ORM\Column(type: 'boolean')]
-    private bool $active = true;
+    #[ORM\Column]
+    private ?bool $active = null;
 
+    /**
+     * @var Collection<int, User>
+     */
     #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'conversations')]
     private Collection $participants;
+
+    /**
+     * @var Collection<int, Message>
+     */
+    #[ORM\OneToMany(targetEntity: Message::class, mappedBy: 'conversation')]
+    private Collection $messages;
 
     public function __construct()
     {
         $this->participants = new ArrayCollection();
-        $this->dateCreation = new \DateTimeImmutable();
+        $this->messages = new ArrayCollection();
+        $this->dateCreation = new \DateTime();
+        $this->active = true;
     }
 
     public function getId(): ?int
@@ -60,7 +72,7 @@ class Conversation
         return $this;
     }
 
-    public function isActive(): bool
+    public function isActive(): ?bool
     {
         return $this->active;
     }
@@ -79,17 +91,56 @@ class Conversation
         return $this->participants;
     }
 
-    public function addParticipant(User $user): static
+    public function addParticipant(User $participant): static
     {
-        if (!$this->participants->contains($user)) {
-            $this->participants->add($user);
+        if (!$this->participants->contains($participant)) {
+            $this->participants->add($participant);
         }
         return $this;
     }
 
-    public function removeParticipant(User $user): static
+    public function removeParticipant(User $participant): static
     {
-        $this->participants->removeElement($user);
+        $this->participants->removeElement($participant);
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Message>
+     */
+    public function getMessages(): Collection
+    {
+        return $this->messages;
+    }
+
+    public function addMessage(Message $message): static
+    {
+        if (!$this->messages->contains($message)) {
+            $this->messages->add($message);
+            $message->setConversation($this);
+        }
+        return $this;
+    }
+
+    public function removeMessage(Message $message): static
+    {
+        if ($this->messages->removeElement($message)) {
+            if ($message->getConversation() === $this) {
+                $message->setConversation(null);
+            }
+        }
+        return $this;
+    }
+
+    // Méthodes helper
+    public function creerConversation(): void
+    {
+        $this->dateCreation = new \DateTime();
+        $this->active = true;
+    }
+
+    public function ajouterParticipant(User $user): void
+    {
+        $this->addParticipant($user);
     }
 }

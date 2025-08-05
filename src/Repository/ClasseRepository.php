@@ -16,71 +16,44 @@ class ClasseRepository extends ServiceEntityRepository
         parent::__construct($registry, Classe::class);
     }
 
+    public function save(Classe $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function remove(Classe $entity, bool $flush = false): void
+    {
+        $this->getEntityManager()->remove($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
     /**
-     * Trouve les classes avec le nombre d'étudiants
+     * Trouver toutes les classes avec leurs étudiants
      */
-    public function findWithStudentCount(): array
+    public function findAllWithStudents(): array
     {
         return $this->createQueryBuilder('c')
-            ->select('c', 'COUNT(s.id) as studentCount')
-            ->leftJoin('c.Student', 's')
-            ->groupBy('c.id')
-            ->orderBy('c.nom', 'ASC')
+            ->leftJoin('c.etudiants', 'e')
+            ->addSelect('e')
             ->getQuery()
             ->getResult();
     }
 
     /**
-     * Classes par niveau (si vous avez une logique de niveau)
+     * Trouver les classes par enseignant
      */
-    public function findByNiveau(string $niveau): array
+    public function findByEnseignant($enseignant): array
     {
         return $this->createQueryBuilder('c')
-            ->where('c.nom LIKE :niveau')
-            ->setParameter('niveau', $niveau.'%')
-            ->orderBy('c.nom', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * Classe avec ses étudiants et séances
-     */
-    public function findCompleteInfo(int $id): ?Classe
-    {
-        return $this->createQueryBuilder('c')
-            ->leftJoin('c.Student', 's')
-            ->leftJoin('c.seances', 'se')
-            ->addSelect('s', 'se')
-            ->where('c.id = :id')
-            ->setParameter('id', $id)
-            ->getQuery()
-            ->getOneOrNullResult();
-    }
-
-    /**
-     * Classes les plus peuplées
-     */
-    public function findMostPopulated(int $limit = 5): array
-    {
-        return $this->createQueryBuilder('c')
-            ->select('c', 'COUNT(s.id) as studentCount')
-            ->leftJoin('c.Student', 's')
-            ->groupBy('c.id')
-            ->orderBy('studentCount', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * Classes vides (sans étudiants)
-     */
-    public function findEmptyClasses(): array
-    {
-        return $this->createQueryBuilder('c')
-            ->leftJoin('c.Student', 's')
-            ->where('s.id IS NULL')
+            ->andWhere('c.enseignant = :enseignant')
+            ->setParameter('enseignant', $enseignant)
             ->orderBy('c.nom', 'ASC')
             ->getQuery()
             ->getResult();

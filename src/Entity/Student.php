@@ -61,4 +61,16 @@ class Student extends User
 
         return $this;
     }
+
+    public function getParent(): ?ParentUser
+    {
+        return $this->parent;
+    }
+
+    public function setParent(?ParentUser $parent): static
+    {
+        $this->parent = $parent;
+
+        return $this;
+    }
 }

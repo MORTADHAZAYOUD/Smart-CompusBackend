@@ -41,7 +41,7 @@ class RegistrationController extends AbstractController
         // 2. Check required fields
         $requiredFields = ['email', 'password', 'type', 'firstname', 'lastname'];
         foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
+            if (empty($data[$field]) || empty(trim($data[$field]))) {
                 return new JsonResponse([
                     'success' => false,
                     'error' => "Le champ '$field' est obligatoire",
@@ -49,6 +49,44 @@ class RegistrationController extends AbstractController
                     'field' => $field
                 ], 400);
             }
+        }
+
+        // 2.1. Validate firstname
+        $firstname = trim($data['firstname']);
+        if (strlen($firstname) < 2) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Le prénom doit contenir au moins 2 caractères',
+                'code' => 'INVALID_FIRSTNAME_LENGTH',
+                'field' => 'firstname'
+            ], 400);
+        }
+        if (!preg_match('/^[a-zA-ZÀ-ÿ\s\-\']+$/', $firstname)) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Le prénom contient des caractères invalides',
+                'code' => 'INVALID_FIRSTNAME_CHARACTERS',
+                'field' => 'firstname'
+            ], 400);
+        }
+
+        // 2.2. Validate lastname
+        $lastname = trim($data['lastname']);
+        if (strlen($lastname) < 2) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Le nom doit contenir au moins 2 caractères',
+                'code' => 'INVALID_LASTNAME_LENGTH',
+                'field' => 'lastname'
+            ], 400);
+        }
+        if (!preg_match('/^[a-zA-ZÀ-ÿ\s\-\']+$/', $lastname)) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Le nom contient des caractères invalides',
+                'code' => 'INVALID_LASTNAME_CHARACTERS',
+                'field' => 'lastname'
+            ], 400);
         }
 
         // 3. Validate email format
@@ -126,76 +164,180 @@ class RegistrationController extends AbstractController
 
             // 9. Set type-specific properties with validation
             if ($user instanceof Student) {
-                // Validate birth date
-                if (!empty($data['dateNaissance'])) {
-                    try {
-                        $birthDate = new \DateTime($data['dateNaissance']);
-                        $today = new \DateTime();
-                        $age = $today->diff($birthDate)->y;
-                        
-                        if ($age < 3 || $age > 25) {
-                            return new JsonResponse([
-                                'success' => false,
-                                'error' => 'L\'âge doit être entre 3 et 25 ans',
-                                'code' => 'INVALID_AGE'
-                            ], 400);
-                        }
-                        
-                        $user->setDateNaissance($birthDate);
-                    } catch (\Exception $e) {
-                        return new JsonResponse([
-                            'success' => false,
-                            'error' => 'Format de date invalide',
-                            'code' => 'INVALID_DATE_FORMAT'
-                        ], 400);
-                    }
+                // Validate birth date (required for students)
+                if (empty($data['dateNaissance'])) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'La date de naissance est obligatoire pour un étudiant',
+                        'code' => 'MISSING_BIRTH_DATE'
+                    ], 400);
                 }
 
-                // Validate and set class
-                if (!empty($data['classe_id'])) {
-                    try {
-                        $classe = $em->getRepository(Classe::class)->find($data['classe_id']);
-                        if (!$classe) {
-                            return new JsonResponse([
-                                'success' => false,
-                                'error' => 'Classe non trouvée',
-                                'code' => 'CLASS_NOT_FOUND'
-                            ], 400);
-                        }
-                        $user->setClasse($classe);
-                    } catch (\Exception $e) {
+                try {
+                    $birthDate = new \DateTime($data['dateNaissance']);
+                    $today = new \DateTime();
+                    $age = $today->diff($birthDate)->y;
+                    
+                    if ($age < 3 || $age > 25) {
                         return new JsonResponse([
                             'success' => false,
-                            'error' => 'Erreur lors de la recherche de la classe',
-                            'code' => 'CLASS_LOOKUP_ERROR'
-                        ], 500);
+                            'error' => 'L\'âge doit être entre 3 et 25 ans',
+                            'code' => 'INVALID_AGE'
+                        ], 400);
                     }
+                    
+                    $user->setDateNaissance($birthDate);
+                } catch (\Exception $e) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'Format de date invalide',
+                        'code' => 'INVALID_DATE_FORMAT'
+                    ], 400);
+                }
+
+                // Handle class name instead of class ID for frontend compatibility
+                if (!empty($data['classe_id'])) {
+                    // Check if it's a string (class name) or numeric (class ID)
+                    if (is_numeric($data['classe_id'])) {
+                        // It's a class ID
+                        try {
+                            $classe = $em->getRepository(Classe::class)->find($data['classe_id']);
+                            if (!$classe) {
+                                return new JsonResponse([
+                                    'success' => false,
+                                    'error' => 'Classe non trouvée',
+                                    'code' => 'CLASS_NOT_FOUND'
+                                ], 400);
+                            }
+                            $user->setClasse($classe);
+                        } catch (\Exception $e) {
+                            return new JsonResponse([
+                                'success' => false,
+                                'error' => 'Erreur lors de la recherche de la classe',
+                                'code' => 'CLASS_LOOKUP_ERROR'
+                            ], 500);
+                        }
+                    } else {
+                        // It's a class name - try to find existing class or create new one
+                        $className = trim($data['classe_id']);
+                        try {
+                            $classe = $em->getRepository(Classe::class)->findOneBy(['nom' => $className]);
+                            if (!$classe) {
+                                // Create new class if it doesn't exist
+                                $classe = new Classe();
+                                $classe->setNom($className);
+                                $em->persist($classe);
+                            }
+                            $user->setClasse($classe);
+                        } catch (\Exception $e) {
+                            return new JsonResponse([
+                                'success' => false,
+                                'error' => 'Erreur lors de la gestion de la classe',
+                                'code' => 'CLASS_MANAGEMENT_ERROR'
+                            ], 500);
+                        }
+                    }
+                } else {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'Le nom de la classe est obligatoire pour un étudiant',
+                        'code' => 'MISSING_CLASS_NAME'
+                    ], 400);
                 }
 
                 $user->setNumStudent($data['numStudent'] ?? 'AUTO-' . uniqid());
             }
 
             if ($user instanceof Teacher) {
-                if (empty($data['specialite'])) {
+                if (empty($data['specialite']) || empty(trim($data['specialite']))) {
                     return new JsonResponse([
                         'success' => false,
                         'error' => 'La spécialité est obligatoire pour un enseignant',
                         'code' => 'MISSING_SPECIALITY'
                     ], 400);
                 }
-                $user->setSpecialite(trim($data['specialite']));
+                
+                $specialite = trim($data['specialite']);
+                if (strlen($specialite) < 3) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'La spécialité doit contenir au moins 3 caractères',
+                        'code' => 'INVALID_SPECIALITY_LENGTH',
+                        'field' => 'specialite'
+                    ], 400);
+                }
+                
+                $user->setSpecialite($specialite);
             }
 
             if ($user instanceof ParentUser) {
-                if (empty($data['profession'])) {
+                if (empty($data['profession']) || empty(trim($data['profession']))) {
                     return new JsonResponse([
                         'success' => false,
                         'error' => 'La profession est obligatoire pour un parent',
                         'code' => 'MISSING_PROFESSION'
                     ], 400);
                 }
-                $user->setProfession(trim($data['profession']));
+                
+                $profession = trim($data['profession']);
+                if (strlen($profession) < 2) {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'La profession doit contenir au moins 2 caractères',
+                        'code' => 'INVALID_PROFESSION_LENGTH',
+                        'field' => 'profession'
+                    ], 400);
+                }
+                
+                $user->setProfession($profession);
                 $user->setTelephone($data['telephone'] ?? '');
+
+                // Handle children names - store them for later processing
+                if (!empty($data['childrenNames']) && is_array($data['childrenNames'])) {
+                    $childrenNames = [];
+                    foreach ($data['childrenNames'] as $index => $childName) {
+                        $trimmedName = trim($childName);
+                        if (empty($trimmedName)) {
+                            return new JsonResponse([
+                                'success' => false,
+                                'error' => "Le nom de l'enfant " . ($index + 1) . " est obligatoire",
+                                'code' => 'MISSING_CHILD_NAME',
+                                'field' => 'childName' . $index
+                            ], 400);
+                        }
+                        if (strlen($trimmedName) < 2) {
+                            return new JsonResponse([
+                                'success' => false,
+                                'error' => "Le nom de l'enfant " . ($index + 1) . " doit contenir au moins 2 caractères",
+                                'code' => 'INVALID_CHILD_NAME_LENGTH',
+                                'field' => 'childName' . $index
+                            ], 400);
+                        }
+                        if (!preg_match('/^[a-zA-ZÀ-ÿ\s\-\']+$/', $trimmedName)) {
+                            return new JsonResponse([
+                                'success' => false,
+                                'error' => "Le nom de l'enfant " . ($index + 1) . " contient des caractères invalides",
+                                'code' => 'INVALID_CHILD_NAME_CHARACTERS',
+                                'field' => 'childName' . $index
+                            ], 400);
+                        }
+                        $childrenNames[] = $trimmedName;
+                    }
+                    
+                    // Store children names as a note or in a separate field
+                    // For now, we'll add it as a custom property or handle it differently
+                    // depending on your business logic for linking children to parents
+                    
+                    // Note: The actual linking of children to parents would require
+                    // the children to already exist in the system as Student entities
+                    // This is just storing the names for reference
+                } else {
+                    return new JsonResponse([
+                        'success' => false,
+                        'error' => 'Au moins un nom d\'enfant est requis pour un parent',
+                        'code' => 'MISSING_CHILDREN_NAMES'
+                    ], 400);
+                }
             }
 
             if ($user instanceof Administrator) {

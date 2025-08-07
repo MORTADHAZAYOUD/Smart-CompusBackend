@@ -48,4 +48,33 @@ class ParentUser extends User
         parent::__construct();
         $this->enfants = new ArrayCollection();
     }
+
+    /**
+     * @return Collection<int, Student>
+     */
+    public function getEnfants(): Collection
+    {
+        return $this->enfants;
+    }
+
+    public function addEnfant(Student $enfant): static
+    {
+        if (!$this->enfants->contains($enfant)) {
+            $this->enfants->add($enfant);
+            $enfant->setParent($this);
+        }
+
+        return $this;
+    }
+
+    public function removeEnfant(Student $enfant): static
+    {
+        if ($this->enfants->removeElement($enfant)) {
+            if ($enfant->getParent() === $this) {
+                $enfant->setParent(null);
+            }
+        }
+
+        return $this;
+    }
 }

@@ -24,7 +24,7 @@ class Conversation
     #[ORM\Column(type: 'boolean')]
     private bool $active = true;
 
-    #[ORM\ManyToMany(targetEntity: User::class, inversedBy: 'conversations')]
+    #[ORM\OneToMany(mappedBy: "conversation", targetEntity: ConversationParticipant::class, cascade: ["persist", "remove"])]
     private Collection $participants;
 
     public function __construct()
@@ -72,24 +72,56 @@ class Conversation
     }
 
     /**
-     * @return Collection<int, User>
+     * @return Collection<int, ConversationParticipant>
      */
     public function getParticipants(): Collection
     {
         return $this->participants;
     }
 
-    public function addParticipant(User $user): static
+    public function addParticipant(UserEntityInterface $user): static
     {
-        if (!$this->participants->contains($user)) {
-            $this->participants->add($user);
+        // Vérifier si l'utilisateur est déjà participant
+        $exists = $this->participants->exists(function($key, $participant) use ($user) {
+            return $participant->getUserId() === $user->getId() && 
+                   $participant->getUserType() === $this->getUserTypeFromClass($user);
+        });
+
+        if (!$exists) {
+            $participant = new ConversationParticipant();
+            $participant->setConversation($this);
+            $participant->setUser($user);
+            $this->participants->add($participant);
         }
+        
         return $this;
     }
 
-    public function removeParticipant(User $user): static
+    public function removeParticipant(UserEntityInterface $user): static
     {
-        $this->participants->removeElement($user);
+        $this->participants->removeElement(
+            $this->participants->findFirst(function($key, $participant) use ($user) {
+                return $participant->getUserId() === $user->getId() && 
+                       $participant->getUserType() === $this->getUserTypeFromClass($user);
+            })
+        );
+        
         return $this;
+    }
+
+    private function getUserTypeFromClass(UserEntityInterface $user): string
+    {
+        switch (get_class($user)) {
+            case Administrator::class:
+                return 'administrator';
+            case ParentUser::class:
+                return 'parent';
+            case Teacher::class:
+                return 'teacher';
+            case Student::class:
+                return 'student';
+            default:
+                throw new \InvalidArgumentException('Unknown user type');
+        }
     }
 }

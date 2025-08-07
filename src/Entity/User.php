@@ -42,6 +42,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255)]
     private ?string $lastname = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $emailVerified = false;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $emailVerificationToken = null;
+
+    #[ORM\Column(type: 'datetime', nullable: true)]
+    private ?\DateTime $emailVerificationExpiry = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -160,5 +169,38 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->messagesEnvoyes = new ArrayCollection();
         $this->conversations = new ArrayCollection();
         $this->notifications = new ArrayCollection();
+    }
+
+    public function isEmailVerified(): bool
+    {
+        return $this->emailVerified;
+    }
+
+    public function setEmailVerified(bool $emailVerified): static
+    {
+        $this->emailVerified = $emailVerified;
+        return $this;
+    }
+
+    public function getEmailVerificationToken(): ?string
+    {
+        return $this->emailVerificationToken;
+    }
+
+    public function setEmailVerificationToken(?string $emailVerificationToken): static
+    {
+        $this->emailVerificationToken = $emailVerificationToken;
+        return $this;
+    }
+
+    public function getEmailVerificationExpiry(): ?\DateTime
+    {
+        return $this->emailVerificationExpiry;
+    }
+
+    public function setEmailVerificationExpiry(?\DateTime $emailVerificationExpiry): static
+    {
+        $this->emailVerificationExpiry = $emailVerificationExpiry;
+        return $this;
     }
 }

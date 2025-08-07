@@ -7,8 +7,11 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 #[ORM\Entity(repositoryClass: ClasseRepository::class)]
+#[UniqueEntity(fields: ['nom'], message: 'This class name already exists')]
 class Classe
 {
     #[ORM\Id]
@@ -19,6 +22,8 @@ class Classe
 
     #[ORM\Column(length: 255)]
     #[Groups(['classe:read'])]
+    #[Assert\NotBlank(message: 'Class name is required')]
+    #[Assert\Length(min: 2, max: 255, minMessage: 'Class name must be at least {{ limit }} characters', maxMessage: 'Class name cannot be longer than {{ limit }} characters')]
     private ?string $nom = null;
 
     #[ORM\OneToMany(targetEntity: Student::class, mappedBy: 'classe')]

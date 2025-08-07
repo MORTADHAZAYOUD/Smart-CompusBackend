@@ -3,6 +3,13 @@ security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
+    # Role hierarchy
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_TEACHER, ROLE_STUDENT, ROLE_PARENT, ROLE_USER]
+        ROLE_TEACHER: [ROLE_USER]
+        ROLE_STUDENT: [ROLE_USER]
+        ROLE_PARENT: [ROLE_USER]
+
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
         # used to reload user from session & other features (e.g. switch_user)
@@ -11,7 +18,7 @@ security:
                 class: App\Entity\User
                 property: email
 
-    firewalls:  # This should be UNDER security:, not at the root level
+    firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
@@ -24,6 +31,16 @@ security:
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
+        register:
+            pattern: ^/api/register
+            stateless: true
+            security: false
+
+        api_info:
+            pattern: ^/api/(info|health)
+            stateless: true
+            security: false
+
         api:
             pattern: ^/api
             stateless: true
@@ -34,3 +51,29 @@ security:
             provider: app_user_provider
 
     # Easy way to control access for large sections of your site
+    access_control:
+        - { path: ^/api/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/register, roles: PUBLIC_ACCESS }
+        - { path: ^/api/info, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc, roles: PUBLIC_ACCESS }
+        - { path: ^/api/dashboard, roles: ROLE_USER }
+        - { path: ^/api/students, roles: ROLE_ADMIN }
+        - { path: ^/api/teachers, roles: ROLE_ADMIN }
+        - { path: ^/api/classes, roles: ROLE_USER }
+        - { path: ^/api/messages, roles: ROLE_USER }
+        - { path: ^/api/notifications, roles: ROLE_USER }
+        - { path: ^/api, roles: ROLE_USER }
+
+when@test:
+    security:
+        password_hashers:
+            # By default, password hashers are resource intensive and take time. This is
+            # important to generate secure password hashes. In tests however, secure hashes
+            # are not important, waste resources and increase test times. The following
+            # reduces the work factor to the lowest possible values.
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

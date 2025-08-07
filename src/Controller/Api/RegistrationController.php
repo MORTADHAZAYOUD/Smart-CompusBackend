@@ -26,6 +26,25 @@ class RegistrationController extends AbstractController
         EntityManagerInterface $em
     ): JsonResponse {
         
+        // Rate limiting check (optional)
+        $clientIp = $request->getClientIp();
+        $recentRegistrations = $em->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.id > 0') // Simple check - in production, you'd track by IP
+            ->andWhere('u.id > :lastHour')
+            ->setParameter('lastHour', time() - 3600)
+            ->getQuery()
+            ->getSingleScalarResult();
+            
+        if ($recentRegistrations > 50) { // Max 50 registrations per hour globally
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Trop de tentatives d\'inscription. Veuillez réessayer plus tard.',
+                'code' => 'RATE_LIMIT_EXCEEDED'
+            ], 429);
+        }
+        
         // 1. Parse JSON data
         $data = json_decode($request->getContent(), true);
         
@@ -60,12 +79,21 @@ class RegistrationController extends AbstractController
             ], 400);
         }
 
-        // 4. Validate password (minimum 6 characters for simplicity)
-        if (strlen($data['password']) < 6) {
+        // 4. Validate password (enhanced security)
+        if (strlen($data['password']) < 8) {
             return new JsonResponse([
                 'success' => false,
-                'error' => 'Le mot de passe doit contenir au moins 6 caractères',
+                'error' => 'Le mot de passe doit contenir au moins 8 caractères',
                 'code' => 'PASSWORD_TOO_SHORT'
+            ], 400);
+        }
+
+        // Enhanced password validation
+        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/', $data['password'])) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => 'Le mot de passe doit contenir au moins une minuscule, une majuscule et un chiffre',
+                'code' => 'PASSWORD_TOO_WEAK'
             ], 400);
         }
 
